@@ -1,4 +1,4 @@
-// swift-tools-version:5.1
+// swift-tools-version:5.2
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -6,10 +6,10 @@ import PackageDescription
 let package = Package(
     name: "CocoaLumberjack",
     platforms: [
-        .iOS(.v8),
+        .iOS(.v9),
         .macOS(.v10_10),
         .watchOS(.v3),
-        .tvOS(.v9)
+        .tvOS(.v9),
     ],
     products: [
         // Products define the executables and libraries produced by a package, and make them visible to other packages.
@@ -37,7 +37,7 @@ let package = Package(
                 dependencies: ["CocoaLumberjack", "CocoaLumberjackSwiftSupport"],
                 exclude: ["Supporting Files"]),
         .target(name: "CocoaLumberjackSwiftLogBackend",
-                dependencies: ["CocoaLumberjack", "Logging"]),
+                dependencies: ["CocoaLumberjack", .product(name: "Logging", package: "swift-log")]),
         .testTarget(name: "CocoaLumberjackTests",
                     dependencies: ["CocoaLumberjack"]),
         .testTarget(name: "CocoaLumberjackSwiftTests",
