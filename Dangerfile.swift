@@ -70,7 +70,8 @@ SwiftLint.lint(.modifiedAndCreatedFiles(directory: "Sources"))
 
 // Added (or removed) library files need to be added (or removed) from the
 // Carthage Xcode project to avoid breaking things for our Carthage users.
-let xcodeProjectWasModified = git.modifiedFiles.contains("Lumberjack.xcodeproj")
+let xcodeProjectFile: Danger.File = "Lumberjack.xcodeproj/project.pbxproj"
+let xcodeProjectWasModified = git.modifiedFiles.contains(xcodeProjectFile)
 if (git.createdFiles + git.deletedFiles).contains(where: { $0.isInSources && $0.isSourceFile && !$0.isSPMOnlySourceFile })
     && !xcodeProjectWasModified {
   fail("Added or removed library files require the Carthage Xcode project to be updated.")
@@ -110,7 +111,7 @@ if xcodeProjectWasModified {
         "TARGETED_DEVICE_FAMILY",
         "WRAPPER_EXTENSION",
     ]
-    ["Lumberjack.xcodeproj/project.pbxproj"]
+    [xcodeProjectFile]
         .lazy
         .filter { FileManager.default.fileExists(atPath: $0) }
         .forEach { projectFile in
@@ -135,7 +136,7 @@ let copyrightLines = (
     source: [
         "// Software License Agreement (BSD License)",
         "//",
-        "// Copyright (c) 2010-2020, Deusty, LLC",
+        "// Copyright (c) 2010-2021, Deusty, LLC",
         "// All rights reserved.",
         "//",
         "// Redistribution and use of this software in source and binary forms,",
@@ -176,19 +177,31 @@ let filesWithInvalidCopyright = sourcefilesToCheck.lazy
     .filter { FileManager.default.fileExists(atPath: $0) }
     .filter {
         // Use correct copyright lines depending on source file location
-        let expectedLines: Array<String>
+        let (expectedLines, shouldMatchExactly): (Array<String>, Bool)
         if $0.isInDemos {
             expectedLines = copyrightLines.demos
+            shouldMatchExactly = false
         } else if $0.isInBenchmarking {
             expectedLines = copyrightLines.benchmarking
+            shouldMatchExactly = false
         } else {
             expectedLines = copyrightLines.source
+            shouldMatchExactly = true
         }
-        return !danger.utils.readFile($0).split(separator: "\n").lazy.map(String.init).starts(with: expectedLines)
+        let actualLines = danger.utils.readFile($0).split(separator: "\n").lazy.map(String.init)
+        if shouldMatchExactly {
+            return !actualLines.starts(with: expectedLines)
+        } else {
+            return !zip(actualLines, expectedLines).allSatisfy { $0.starts(with: $1) }
+        }
 }
 if !filesWithInvalidCopyright.isEmpty {
     filesWithInvalidCopyright.forEach {
         markdown(message: "Invalid copyright!", file: $0, line: 1)
     }
-    warn("Copyright is not valid. See our default copyright in all of our files (Sources, Demos and Benchmarking use different formats).")
+    warn("""
+         Copyright is not valid. See our default copyright in all of our files (Sources, Demos and Benchmarking use different formats).
+         Invalid files:
+         \(filesWithInvalidCopyright.map { "- \($0)" }.joined(separator: "\n"))
+         """)
 }
